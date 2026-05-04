@@ -1756,10 +1756,13 @@ input[type="color"] {
 
   .app-shell {
     padding: 0 0 calc(var(--mobile-tabbar-offset) + 12px);
+    overflow-x: hidden;
+    width: 100%;
   }
 
   .tab-panel {
     padding-bottom: calc(var(--mobile-tabbar-offset) + 12px);
+    overflow-x: hidden;
   }
 
   .tab-panel.panel {
@@ -1922,6 +1925,109 @@ input[type="color"] {
 
   .card-grid--expenses .data-card {
     flex: 0 0 280px;
+  }
+
+  /* ===== TABELAS RESPONSIVAS NO MOBILE ===== */
+  .excel-table-wrap {
+    overflow-x: hidden;
+    border: none;
+    border-radius: 0;
+    margin-top: 0;
+  }
+
+  .excel-table {
+    min-width: unset;
+    display: block;
+  }
+
+  .excel-table thead {
+    display: none;
+  }
+
+  .excel-table tbody,
+  .excel-table tr,
+  .excel-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .excel-table tbody tr {
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .excel-table td {
+    border: none;
+    border-bottom: 1px solid var(--border);
+    padding: 10px 12px;
+    text-align: left;
+    white-space: normal;
+    position: relative;
+    padding-left: 40%;
+  }
+
+  .excel-table td:last-child {
+    border-bottom: none;
+  }
+
+  .excel-table td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 12px;
+    width: 35%;
+    font-weight: 700;
+    color: var(--muted-strong);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0;
+  }
+
+  .excel-table__description {
+    min-width: unset;
+    font-size: 1rem;
+  }
+
+  .table-actions {
+    justify-content: flex-start;
+  }
+
+  .table-meter {
+    min-width: unset;
+  }
+
+  /* ===== FILTROS RESPONSIVOS ===== */
+  .filter-bar {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .filter-bar input,
+  .filter-bar select {
+    width: 100%;
+    min-width: unset !important;
+  }
+
+  /* ===== GRAFICO PIZZA RESPONSIVO ===== */
+  .report-panel[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  .report-panel .recharts-wrapper {
+    max-width: 100% !important;
+  }
+
+  /* ===== DAILY CHART RESPONSIVO ===== */
+  .daily-chart {
+    gap: 4px;
+    padding: 8px 2px;
+  }
+
+  .daily-column {
+    flex: 0 0 22px;
+    gap: 4px;
+    height: 160px;
   }
 }
 

@@ -28,6 +28,7 @@ export type DashboardLoadResult = {
   transactions: Transaction[];
   recurring: RecurringTransaction[];
   supportsDisplayName: boolean;
+  errors: string[];
 };
 
 function isMissingDisplayNameColumn(error: MaybeDisplayNameError | null) {
@@ -36,7 +37,15 @@ function isMissingDisplayNameColumn(error: MaybeDisplayNameError | null) {
   return details.includes("display_name") || error.code === "PGRST204" || error.code === "42703";
 }
 
+function guardClient(client: SupabaseClient | null): asserts client is SupabaseClient {
+  if (!client) {
+    throw new Error("Supabase não está configurado. Verifique as variáveis de ambiente.");
+  }
+}
+
 export async function ensureBaseData(client: SupabaseClient, userId: string, email: string) {
+  guardClient(client);
+
   const { error: profileError } = await client.from("profiles").upsert({ id: userId, email });
   if (profileError) {
     throw profileError;
@@ -44,7 +53,9 @@ export async function ensureBaseData(client: SupabaseClient, userId: string, ema
 
   const { count, error: categoryCountError } = await client
     .from("categories")
-    .select("id", { count: "exact", head: true });
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId);
+
   if (categoryCountError) {
     throw categoryCountError;
   }
@@ -63,32 +74,40 @@ export async function ensureBaseData(client: SupabaseClient, userId: string, ema
 }
 
 export async function loadDashboardData(
-  client: SupabaseClient,
+  client: SupabaseClient | null,
   userId: string,
   email: string,
   selectedMonth: string,
   supportsDisplayName: boolean,
 ): Promise<DashboardLoadResult> {
+  guardClient(client);
+
   await ensureBaseData(client, userId, email);
 
   const { start, end } = getMonthRange(selectedMonth);
+
   const [categoryResult, limitResult, transactionResult, recurringResult] = await Promise.all([
-    client.from("categories").select("*").order("name"),
-    client.from("category_limits").select("id,category_id,amount_cents"),
+    client.from("categories").select("*").eq("user_id", userId).order("name"),
+    client.from("category_limits").select("id,category_id,amount_cents").eq("user_id", userId),
     client
       .from("transactions")
       .select("*")
+      .eq("user_id", userId)
       .gte("entry_date", start)
       .lt("entry_date", end)
       .order("entry_date", { ascending: false }),
-    client.from("recurring_transactions").select("*").order("day_of_month"),
+    client.from("recurring_transactions").select("*").eq("user_id", userId).order("day_of_month"),
   ]);
 
   let profileResult;
   let nextSupportsDisplayName = supportsDisplayName;
 
   if (supportsDisplayName) {
-    profileResult = await client.from("profiles").select("id,email,display_name").eq("id", userId).maybeSingle();
+    profileResult = await client
+      .from("profiles")
+      .select("id,email,display_name")
+      .eq("id", userId)
+      .maybeSingle();
 
     if (isMissingDisplayNameColumn(profileResult.error as MaybeDisplayNameError | null)) {
       nextSupportsDisplayName = false;
@@ -98,16 +117,12 @@ export async function loadDashboardData(
     profileResult = await client.from("profiles").select("id,email").eq("id", userId).maybeSingle();
   }
 
-  const firstError =
-    profileResult.error ||
-    categoryResult.error ||
-    limitResult.error ||
-    transactionResult.error ||
-    recurringResult.error;
-
-  if (firstError) {
-    throw firstError;
-  }
+  const errors: string[] = [];
+  if (profileResult.error) errors.push("Erro ao carregar perfil.");
+  if (categoryResult.error) errors.push("Erro ao carregar categorias.");
+  if (limitResult.error) errors.push("Erro ao carregar limites.");
+  if (transactionResult.error) errors.push("Erro ao carregar lançamentos.");
+  if (recurringResult.error) errors.push("Erro ao carregar recorrências.");
 
   const profileRow = profileResult.data as
     | {
@@ -130,51 +145,67 @@ export async function loadDashboardData(
     transactions: transactionResult.data ?? [],
     recurring: recurringResult.data ?? [],
     supportsDisplayName: nextSupportsDisplayName,
+    errors,
   };
 }
 
 export async function createTransaction(
-  client: SupabaseClient,
+  client: SupabaseClient | null,
   payload: Omit<Transaction, "id"> & { user_id: string },
 ) {
+  guardClient(client);
   return client.from("transactions").insert(payload).select("*").single();
 }
 
 export async function updateTransactionById(
-  client: SupabaseClient,
+  client: SupabaseClient | null,
   id: string,
+  userId: string,
   payload: Partial<Transaction>,
 ) {
-  return client.from("transactions").update(payload).eq("id", id).select("*").single();
+  guardClient(client);
+  return client
+    .from("transactions")
+    .update(payload)
+    .eq("id", id)
+    .eq("user_id", userId)
+    .select("*")
+    .single();
 }
 
-export async function deleteTransactionById(client: SupabaseClient, id: string) {
-  return client.from("transactions").delete().eq("id", id);
+export async function deleteTransactionById(client: SupabaseClient | null, id: string, userId: string) {
+  guardClient(client);
+  return client.from("transactions").delete().eq("id", id).eq("user_id", userId);
 }
 
 export async function createCategory(
-  client: SupabaseClient,
+  client: SupabaseClient | null,
   payload: { user_id: string; name: string; type: Category["type"]; color: string },
 ) {
+  guardClient(client);
   return client.from("categories").insert(payload).select("*").single();
 }
 
 export async function updateCategoryById(
-  client: SupabaseClient,
+  client: SupabaseClient | null,
   id: string,
+  userId: string,
   payload: Pick<Category, "name" | "color">,
 ) {
-  return client.from("categories").update(payload).eq("id", id).select("*").single();
+  guardClient(client);
+  return client.from("categories").update(payload).eq("id", id).eq("user_id", userId).select("*").single();
 }
 
-export async function deleteCategoryById(client: SupabaseClient, id: string) {
-  return client.from("categories").delete().eq("id", id);
+export async function deleteCategoryById(client: SupabaseClient | null, id: string, userId: string) {
+  guardClient(client);
+  return client.from("categories").delete().eq("id", id).eq("user_id", userId);
 }
 
 export async function upsertCategoryLimit(
-  client: SupabaseClient,
+  client: SupabaseClient | null,
   payload: { user_id: string; category_id: string; amount_cents: number; updated_at: string },
 ) {
+  guardClient(client);
   return client
     .from("category_limits")
     .upsert(payload, { onConflict: "user_id,category_id" })
@@ -182,58 +213,78 @@ export async function upsertCategoryLimit(
     .single();
 }
 
-export async function deleteCategoryLimitById(client: SupabaseClient, id: string) {
-  return client.from("category_limits").delete().eq("id", id);
+export async function deleteCategoryLimitById(client: SupabaseClient | null, id: string, userId: string) {
+  guardClient(client);
+  return client.from("category_limits").delete().eq("id", id).eq("user_id", userId);
 }
 
 export async function createRecurringTransaction(
-  client: SupabaseClient,
+  client: SupabaseClient | null,
   payload: { user_id: string } & Omit<RecurringTransaction, "id">,
 ) {
+  guardClient(client);
   return client.from("recurring_transactions").insert(payload).select("*").single();
 }
 
 export async function updateRecurringTransactionById(
-  client: SupabaseClient,
+  client: SupabaseClient | null,
   id: string,
+  userId: string,
   payload: Omit<RecurringTransaction, "id">,
 ) {
-  return client.from("recurring_transactions").update(payload).eq("id", id).select("*").single();
+  guardClient(client);
+  return client
+    .from("recurring_transactions")
+    .update(payload)
+    .eq("id", id)
+    .eq("user_id", userId)
+    .select("*")
+    .single();
 }
 
-export async function deleteRecurringTransactionById(client: SupabaseClient, id: string) {
-  return client.from("recurring_transactions").delete().eq("id", id);
+export async function deleteRecurringTransactionById(client: SupabaseClient | null, id: string, userId: string) {
+  guardClient(client);
+  return client.from("recurring_transactions").delete().eq("id", id).eq("user_id", userId);
 }
 
 export async function updateRecurringActiveState(
-  client: SupabaseClient,
+  client: SupabaseClient | null,
   id: string,
+  userId: string,
   isActive: boolean,
 ) {
+  guardClient(client);
   return client
     .from("recurring_transactions")
     .update({ is_active: isActive })
     .eq("id", id)
+    .eq("user_id", userId)
     .select("*")
     .single();
 }
 
 export async function updateTransactionPaidState(
-  client: SupabaseClient,
+  client: SupabaseClient | null,
   id: string,
+  userId: string,
   isPaid: boolean,
 ) {
-  return client.from("transactions").update({ is_paid: isPaid }).eq("id", id).select("*").single();
+  guardClient(client);
+  return client
+    .from("transactions")
+    .update({ is_paid: isPaid })
+    .eq("id", id)
+    .eq("user_id", userId)
+    .select("*")
+    .single();
 }
 
 export async function updateProfileDisplayName(
-  client: SupabaseClient,
+  client: SupabaseClient | null,
   userId: string,
   email: string,
   displayName: string | null,
 ) {
-  return client
-    .from("profiles")
-    .update({ display_name: displayName, email })
-    .eq("id", userId);
+  guardClient(client);
+  return client.from("profiles").update({ display_name: displayName, email }).eq("id", userId);
 }

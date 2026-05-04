@@ -54,6 +54,7 @@ import {
 } from "../lib/dashboard-api";
 import { supabase } from "../lib/supabase";
 import { DashboardModal } from "./dashboard/DashboardModal";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from "recharts";
 import { SummaryCard } from "./dashboard/SummaryCard";
 import { TransactionCards } from "./dashboard/TransactionCards";
 
@@ -226,6 +227,9 @@ export function FinanceDashboard() {
     useState<(CategoryForm & { id: string; type: EntryType }) | null>(null);
   const [editingRecurring, setEditingRecurring] =
     useState<(RecurringForm & { id: string; is_active: boolean }) | null>(null);
+  const [transactionSearch, setTransactionSearch] = useState("");
+  const [transactionFilterCategory, setTransactionFilterCategory] = useState("");
+  const [transactionFilterStatus, setTransactionFilterStatus] = useState<"" | "paid" | "pending">("");
   const [recurringSortKey, setRecurringSortKey] = useState<RecurringSortKey>("day");
   const [recurringSortDirection, setRecurringSortDirection] = useState<SortDirection>("asc");
   const [categorySortKey, setCategorySortKey] = useState<CategorySortKey>("name");
@@ -315,6 +319,17 @@ export function FinanceDashboard() {
     return { day, spent };
   }).filter((item) => item.spent > 0);
   const maxDailyExpense = Math.max(1, ...dailyExpenseRows.map((item) => item.spent));
+  const filteredTransactions = transactions.filter((item) => {
+    const matchesSearch = transactionSearch === "" ||
+      item.description.toLowerCase().includes(transactionSearch.toLowerCase()) ||
+      categoryNameFor(item.category_id).toLowerCase().includes(transactionSearch.toLowerCase()) ||
+      String(item.amount_cents / 100).includes(transactionSearch);
+    const matchesCategory = transactionFilterCategory === "" || item.category_id === transactionFilterCategory;
+    const matchesStatus = transactionFilterStatus === "" ||
+      (transactionFilterStatus === "paid" ? item.is_paid : !item.is_paid);
+    return matchesSearch && matchesCategory && matchesStatus;
+  });
+
   const isBusy = pendingAction !== null;
 
   function setMessage(text: string, tone?: NoticeTone) {
@@ -489,7 +504,7 @@ export function FinanceDashboard() {
 
     setPendingAction("transaction");
     try {
-      const { data, error } = await updateTransactionById(supabase, editingTransaction.id, {
+      const { data, error } = await updateTransactionById(supabase, editingTransaction.id, user?.id ?? "", {
         type: editingTransaction.type,
         description: editingTransaction.description.trim(),
         amount_cents: amount,
@@ -583,7 +598,7 @@ export function FinanceDashboard() {
 
     setPendingAction("category");
     try {
-      const { data, error } = await updateCategoryById(supabase, editingCategory.id, {
+      const { data, error } = await updateCategoryById(supabase, editingCategory.id, user?.id ?? "", {
         name: editingCategory.name.trim(),
         color: editingCategory.color,
       });
@@ -654,7 +669,7 @@ export function FinanceDashboard() {
   }
 
   async function deleteCategoryLimit(id: string) {
-    if (!supabase) return;
+    if (!supabase || !user) return;
     const client = supabase;
     const limitToDelete = categoryLimits.find((item) => item.id === id);
     setConfirmDialog({
@@ -662,7 +677,7 @@ export function FinanceDashboard() {
       message: "A categoria continua existindo, apenas o limite mensal sera removido.",
       confirmLabel: "Remover",
       onConfirm: async () => {
-        const { error } = await deleteCategoryLimitById(client, id);
+        const { error } = await deleteCategoryLimitById(client, id, user?.id ?? "");
         if (error) {
           setMessage("Nao foi possivel remover o limite.");
           return;
@@ -686,7 +701,7 @@ export function FinanceDashboard() {
     const amount = toCents(recurringForm.amount);
     const day = Number(recurringForm.day_of_month);
     if (!amount || !recurringForm.description.trim() || day < 1 || day > 28) {
-      setMessage("Preencha recorrencia com valor e dia entre 1 e 28.");
+      setMessage("Preencha recorrencia com valor e dia entre 1 e 31.");
       return;
     }
 
@@ -726,13 +741,13 @@ export function FinanceDashboard() {
     const amount = toCents(editingRecurring.amount);
     const day = Number(editingRecurring.day_of_month);
     if (!amount || !editingRecurring.description.trim() || day < 1 || day > 28) {
-      setMessage("Preencha recorrencia com valor e dia entre 1 e 28.");
+      setMessage("Preencha recorrencia com valor e dia entre 1 e 31.");
       return;
     }
 
     setPendingAction("recurring");
     try {
-      const { data, error } = await updateRecurringTransactionById(supabase, editingRecurring.id, {
+      const { data, error } = await updateRecurringTransactionById(supabase, editingRecurring.id, user?.id ?? "", {
         type: editingRecurring.type,
         description: editingRecurring.description.trim(),
         amount_cents: amount,
@@ -759,14 +774,14 @@ export function FinanceDashboard() {
   }
 
   async function deleteTransaction(id: string) {
-    if (!supabase) return;
+    if (!supabase || !user) return;
     const client = supabase;
     setConfirmDialog({
       title: "Apagar lancamento?",
       message: "Esta acao remove o lancamento deste mes.",
       confirmLabel: "Apagar",
       onConfirm: async () => {
-        const { error } = await deleteTransactionById(client, id);
+        const { error } = await deleteTransactionById(client, id, user?.id ?? "");
         if (error) {
           setMessage("Nao foi possivel apagar o lancamento.");
           return;
@@ -779,14 +794,14 @@ export function FinanceDashboard() {
   }
 
   async function deleteCategory(id: string) {
-    if (!supabase) return;
+    if (!supabase || !user) return;
     const client = supabase;
     setConfirmDialog({
       title: "Apagar categoria?",
       message: "Lancamentos antigos continuam salvos e ficam sem categoria.",
       confirmLabel: "Apagar",
       onConfirm: async () => {
-        const { error } = await deleteCategoryById(client, id);
+        const { error } = await deleteCategoryById(client, id, user?.id ?? "");
         if (error) {
           setMessage("Nao foi possivel apagar a categoria.");
           return;
@@ -813,14 +828,14 @@ export function FinanceDashboard() {
   }
 
   async function deleteRecurring(id: string) {
-    if (!supabase) return;
+    if (!supabase || !user) return;
     const client = supabase;
     setConfirmDialog({
       title: "Apagar recorrencia?",
       message: "Lancamentos ja gerados continuam salvos.",
       confirmLabel: "Apagar",
       onConfirm: async () => {
-        const { error } = await deleteRecurringTransactionById(client, id);
+        const { error } = await deleteRecurringTransactionById(client, id, user?.id ?? "");
         if (error) {
           setMessage("Nao foi possivel apagar a recorrencia.");
           return;
@@ -846,10 +861,10 @@ export function FinanceDashboard() {
   }
 
   async function toggleRecurring(item: RecurringTransaction) {
-    if (!supabase || isBusy) return;
+    if (!supabase || !user || isBusy) return;
     setPendingAction("recurring");
     try {
-      const { data, error } = await updateRecurringActiveState(supabase, item.id, !item.is_active);
+      const { data, error } = await updateRecurringActiveState(supabase, item.id, user?.id ?? "", !item.is_active);
       if (error) {
         setMessage("Nao foi possivel alterar a recorrencia.");
         return;
@@ -933,10 +948,10 @@ export function FinanceDashboard() {
   }
 
   async function toggleTransactionPaid(item: Transaction) {
-    if (!supabase || item.type !== "saida" || isBusy) return;
+    if (!supabase || !user || item.type !== "saida" || isBusy) return;
     setPendingAction("paid");
     try {
-      const { data, error } = await updateTransactionPaidState(supabase, item.id, !item.is_paid);
+      const { data, error } = await updateTransactionPaidState(supabase, item.id, user?.id ?? "", !item.is_paid);
       if (error) {
         setMessage("Nao foi possivel alterar o status de pagamento.");
         return;
@@ -1075,6 +1090,31 @@ export function FinanceDashboard() {
     });
   }
 
+  function exportReportCSV() {
+    const rows = [
+      ["Data", "Descricao", "Categoria", "Valor", "Tipo", "Status"],
+      ...transactions.map((t) => [
+        t.entry_date,
+        t.description,
+        categoryNameFor(t.category_id),
+        (t.amount_cents / 100).toFixed(2).replace(".", ","),
+        t.type === "entrada" ? "Entrada" : "Saida",
+        t.is_paid ? "Pago" : "Pendente",
+      ]),
+    ];
+    const csv = rows.map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(";")).join("\n");
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `relatorio-${selectedMonth}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setMessage("Relatorio exportado.");
+  }
+
   function goToPreviousMonth() {
     setSelectedMonth((current) => shiftMonthKey(current, -1));
   }
@@ -1175,7 +1215,28 @@ export function FinanceDashboard() {
         </div>
       </header>
 
-      {message && <div className={`notice ${messageTone}`}>{message}</div>}
+      {message && (
+        <div
+          className={`toast ${messageTone}`}
+          style={{
+            position: "fixed",
+            bottom: "24px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 9999,
+            padding: "12px 24px",
+            borderRadius: "8px",
+            background: messageTone === "error" ? "#d6336c" : messageTone === "success" ? "#2f9e44" : "#1971c2",
+            color: "#fff",
+            fontWeight: 500,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+            animation: "toastIn 0.25s ease",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {message}
+        </div>
+      )}
 
       <nav className={`mobile-tabbar ${mobileInputFocused ? "is-collapsed" : ""}`} aria-label="Areas do app">
         {navigation}
@@ -1297,8 +1358,34 @@ export function FinanceDashboard() {
             </button>
           </form>
 
+          <div className="filter-bar" style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "12px" }}>
+            <input
+              placeholder="Buscar por descricao, categoria ou valor..."
+              value={transactionSearch}
+              onChange={(e) => setTransactionSearch(e.target.value)}
+              style={{ flex: 1, minWidth: "200px" }}
+            />
+            <select
+              value={transactionFilterCategory}
+              onChange={(e) => setTransactionFilterCategory(e.target.value)}
+            >
+              <option value="">Todas as categorias</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+            <select
+              value={transactionFilterStatus}
+              onChange={(e) => setTransactionFilterStatus(e.target.value as any)}
+            >
+              <option value="">Todos os status</option>
+              <option value="paid">Pago</option>
+              <option value="pending">Pendente</option>
+            </select>
+          </div>
+
           <TransactionCards
-            transactions={transactions}
+            transactions={filteredTransactions}
             loading={loading}
             categoryNameFor={categoryNameFor}
             deleteTransaction={deleteTransaction}
@@ -1349,7 +1436,7 @@ export function FinanceDashboard() {
             <input
               type="number"
               min="1"
-              max="28"
+              max="31"
               value={recurringForm.day_of_month}
               onChange={(event) =>
                 setRecurringForm((current) => ({ ...current, day_of_month: event.target.value }))
@@ -1433,21 +1520,21 @@ export function FinanceDashboard() {
                     const generated = recurringAlreadyGenerated(item);
                     return (
                       <tr key={item.id}>
-                        <td>{item.day_of_month}</td>
-                        <td>
+                        <td data-label="Dia">{item.day_of_month}</td>
+                        <td data-label="Tipo">
                           <span className="type-pill">{item.type === "entrada" ? "Entrada" : "Saida"}</span>
                         </td>
-                        <td className="excel-table__description">{item.description}</td>
-                        <td>{categoryNameFor(item.category_id)}</td>
-                        <td className={item.type === "entrada" ? "money-income" : "money-expense"}>
+                        <td className="excel-table__description" data-label="Descricao">{item.description}</td>
+                        <td data-label="Categoria">{categoryNameFor(item.category_id)}</td>
+                        <td className={item.type === "entrada" ? "money-income" : "money-expense"} data-label="Valor">
                           {formatMoney(item.amount_cents)}
                         </td>
-                        <td>
+                        <td data-label="Status">
                           <span className={generated ? "status-pill success" : item.is_active ? "status-pill success" : "status-pill pending"}>
                             {generated ? "Gerada neste mes" : item.is_active ? "Ativa" : "Pausada"}
                           </span>
                         </td>
-                        <td>
+                        <td data-label="Acoes">
                           <div className="table-actions">
                             <button
                               className="icon-button"
@@ -1648,15 +1735,15 @@ export function FinanceDashboard() {
                     const exceeded = Boolean(limit && spent > limit.amount_cents);
                     return (
                       <tr key={category.id}>
-                        <td className="excel-table__description">{category.name}</td>
-                        <td>{formatMoney(spent)}</td>
-                        <td>{limit ? formatMoney(limit.amount_cents) : "Sem limite"}</td>
-                        <td>
+                        <td className="excel-table__description" data-label="Categoria">{category.name}</td>
+                        <td data-label="Gasto">{formatMoney(spent)}</td>
+                        <td data-label="Limite">{limit ? formatMoney(limit.amount_cents) : "Sem limite"}</td>
+                        <td data-label="Uso">
                           <div className="table-meter" aria-label={`Uso do limite de ${category.name}`}>
                             <span className={exceeded ? "exceeded" : ""} style={{ width: limit ? `${percent}%` : "0%" }} />
                           </div>
                         </td>
-                        <td>
+                        <td data-label="Status">
                           <span className={exceeded ? "status-pill pending" : "status-pill success"}>
                             {limit
                               ? exceeded
@@ -1665,7 +1752,7 @@ export function FinanceDashboard() {
                               : "Sem limite"}
                           </span>
                         </td>
-                        <td>
+                        <td data-label="Acoes">
                           <div className="table-actions">
                             <button
                               className="icon-button"
@@ -1707,6 +1794,9 @@ export function FinanceDashboard() {
                 Veja onde o dinheiro saiu no mes filtrado e quais categorias precisam de mais atencao.
               </p>
             </div>
+            <button className="primary-button" onClick={exportReportCSV} disabled={isBusy || transactions.length === 0}>
+              Exportar CSV
+            </button>
             <div className="report-highlight">
               <span>Maior categoria</span>
               <strong>{topExpenseCategory ? topExpenseCategory.category.name : "Sem gastos"}</strong>
@@ -1731,23 +1821,50 @@ export function FinanceDashboard() {
               {reportExpenseRows.length === 0 ? (
                 <p className="empty-state">Nenhuma saida para analisar neste mes.</p>
               ) : (
-                <div className="report-bars">
-                  {reportExpenseRows.map(({ category, spent }) => (
-                    <div className="report-bar-row" key={category.id}>
-                      <div className="report-bar-label">
-                        <span>{category.name}</span>
-                        <strong>{formatMoney(spent)}</strong>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: "24px", alignItems: "start" }}>
+                  <div className="report-bars">
+                    {reportExpenseRows.map(({ category, spent }) => (
+                      <div className="report-bar-row" key={category.id}>
+                        <div className="report-bar-label">
+                          <span>{category.name}</span>
+                          <strong>{formatMoney(spent)}</strong>
+                        </div>
+                        <div className="report-track" aria-label={`Gasto em ${category.name}`}>
+                          <span
+                            style={{
+                              width: `${Math.max(6, Math.round((spent / maxExpenseByCategory) * 100))}%`,
+                              background: category.color,
+                            }}
+                          />
+                        </div>
                       </div>
-                      <div className="report-track" aria-label={`Gasto em ${category.name}`}>
-                        <span
-                          style={{
-                            width: `${Math.max(6, Math.round((spent / maxExpenseByCategory) * 100))}%`,
-                            background: category.color,
-                          }}
+                    ))}
+                  </div>
+                  <div style={{ height: "260px" }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={reportExpenseRows}
+                          dataKey="spent"
+                          nameKey="category.name"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          innerRadius={40}
+                          paddingAngle={3}
+                        >
+                          {reportExpenseRows.map(({ category }) => (
+                            <Cell key={category.id} fill={category.color} />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip
+                          formatter={(value: any) => formatMoney(Number(value)) as any}
+                          labelFormatter={(_, payload: any) => payload?.[0]?.payload?.category?.name || ""}
                         />
-                      </div>
-                    </div>
-                  ))}
+                        <Legend verticalAlign="bottom" height={24} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
               )}
             </article>
@@ -2047,7 +2164,7 @@ export function FinanceDashboard() {
             <input
               type="number"
               min="1"
-              max="28"
+              max="31"
               value={editingRecurring.day_of_month}
               onChange={(event) =>
                 setEditingRecurring((current) =>

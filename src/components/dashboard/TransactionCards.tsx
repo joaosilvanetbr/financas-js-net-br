@@ -121,16 +121,16 @@ export function TransactionCards({
         <tbody>
           {sortedTransactions.map((item) => (
             <tr key={item.id}>
-              <td>{new Date(`${item.entry_date}T00:00:00`).toLocaleDateString("pt-BR")}</td>
-              <td>
+              <td data-label="Data">{new Date(`${item.entry_date}T00:00:00`).toLocaleDateString("pt-BR")}</td>
+              <td data-label="Tipo">
                 <span className="type-pill">{item.type === "entrada" ? "Entrada" : "Saida"}</span>
               </td>
-              <td className="excel-table__description">{item.description}</td>
-              <td>{categoryNameFor(item.category_id)}</td>
-              <td className={item.type === "entrada" ? "money-income" : "money-expense"}>
+              <td className="excel-table__description" data-label="Descricao">{item.description}</td>
+              <td data-label="Categoria">{categoryNameFor(item.category_id)}</td>
+              <td className={item.type === "entrada" ? "money-income" : "money-expense"} data-label="Valor">
                 {formatMoney(item.amount_cents)}
               </td>
-              <td>
+              <td data-label="Status">
                 {item.type === "saida" ? (
                   <span className={item.is_paid ? "status-pill success" : "status-pill pending"}>
                     {item.is_paid ? "Pago" : "Pendente"}
@@ -139,7 +139,7 @@ export function TransactionCards({
                   <span className="status-pill success">Recebido</span>
                 )}
               </td>
-              <td>
+              <td data-label="Acoes">
                 <div className="table-actions">
                   {item.type === "saida" && (
                     <button
