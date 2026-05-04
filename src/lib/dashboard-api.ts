@@ -37,6 +37,25 @@ function isMissingDisplayNameColumn(error: MaybeDisplayNameError | null) {
   return details.includes("display_name") || error.code === "PGRST204" || error.code === "42703";
 }
 
+async function withRetry<T>(fn: () => PromiseLike<T>, retries = 3, delay = 500): Promise<T> {
+  let lastError: unknown;
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      const isNetworkError =
+        error instanceof Error &&
+        (/networkerror|failed to fetch|timeout|abort|socket|connection|offline|fetch/i.test(error.message) ||
+          (error as any)?.code === "ECONNRESET" ||
+          (error as any)?.code === "ETIMEDOUT");
+      if (!isNetworkError || i === retries - 1) throw error;
+      await new Promise((r) => setTimeout(r, delay * Math.pow(2, i)));
+    }
+  }
+  throw lastError;
+}
+
 function guardClient(client: SupabaseClient | null): asserts client is SupabaseClient {
   if (!client) {
     throw new Error("Supabase não está configurado. Verifique as variáveis de ambiente.");
@@ -87,34 +106,34 @@ export async function loadDashboardData(
   const { start, end } = getMonthRange(selectedMonth);
 
   const [categoryResult, limitResult, transactionResult, recurringResult] = await Promise.all([
-    client.from("categories").select("*").eq("user_id", userId).order("name"),
-    client.from("category_limits").select("id,category_id,amount_cents").eq("user_id", userId),
-    client
+    withRetry(() => client.from("categories").select("*").eq("user_id", userId).order("name")),
+    withRetry(() => client.from("category_limits").select("id,category_id,amount_cents").eq("user_id", userId)),
+    withRetry(() => client
       .from("transactions")
       .select("*")
       .eq("user_id", userId)
       .gte("entry_date", start)
       .lt("entry_date", end)
-      .order("entry_date", { ascending: false }),
-    client.from("recurring_transactions").select("*").eq("user_id", userId).order("day_of_month"),
+      .order("entry_date", { ascending: false })),
+    withRetry(() => client.from("recurring_transactions").select("*").eq("user_id", userId).order("day_of_month")),
   ]);
 
   let profileResult;
   let nextSupportsDisplayName = supportsDisplayName;
 
   if (supportsDisplayName) {
-    profileResult = await client
+    profileResult = await withRetry(() => client
       .from("profiles")
       .select("id,email,display_name")
       .eq("id", userId)
-      .maybeSingle();
+      .maybeSingle());
 
     if (isMissingDisplayNameColumn(profileResult.error as MaybeDisplayNameError | null)) {
       nextSupportsDisplayName = false;
-      profileResult = await client.from("profiles").select("id,email").eq("id", userId).maybeSingle();
+      profileResult = await withRetry(() => client.from("profiles").select("id,email").eq("id", userId).maybeSingle());
     }
   } else {
-    profileResult = await client.from("profiles").select("id,email").eq("id", userId).maybeSingle();
+    profileResult = await withRetry(() => client.from("profiles").select("id,email").eq("id", userId).maybeSingle());
   }
 
   const errors: string[] = [];
