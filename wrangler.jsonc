@@ -1,25 +1,19 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "financas-js-net-br",
+  "pages_build_output_dir": "dist",
   "compatibility_date": "2026-04-29",
-  "observability": {
-    "enabled": true
-  },
-  "assets": {
-    "directory": "dist",
-    "not_found_handling": "single-page-application"
-  },
   "compatibility_flags": [
     "nodejs_compat"
   ],
+  "observability": {
+    "enabled": true
+  },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "financas-d1",
-      "database_id": "financas-d1-local"
+      "database_id": "241842d6-2161-4962-a963-74d0f0857d41"
     }
-  ],
-  "vars": {
-    "JWT_SECRET": "change-me-in-production-use-wrangler-secret"
-  }
+  ]
 }

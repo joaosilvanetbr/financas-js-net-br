@@ -12,7 +12,8 @@
     "test:old": "tsc -p tsconfig.tests.json && node .test-build/tests/finance.test.js"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.49.4",
+    "bcryptjs": "^3.0.2",
+    "jose": "^6.0.10",
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
