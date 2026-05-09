@@ -19,9 +19,9 @@ export function TransactionCards({
   transactions: Transaction[];
   loading: boolean;
   categoryNameFor: (id: string | null) => string;
-  deleteTransaction: (id: string) => Promise<void>;
+  deleteTransaction: (id: string) => void;
   editTransaction: (item: Transaction) => void;
-  togglePaid: (item: Transaction) => Promise<void>;
+  togglePaid: (item: Transaction) => void;
   emptyMessage?: string;
   isBusy: boolean;
 }) {

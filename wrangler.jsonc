@@ -11,5 +11,15 @@
   },
   "compatibility_flags": [
     "nodejs_compat"
-  ]
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "financas-d1",
+      "database_id": "financas-d1-local"
+    }
+  ],
+  "vars": {
+    "JWT_SECRET": "change-me-in-production-use-wrangler-secret"
+  }
 }

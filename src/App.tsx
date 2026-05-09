@@ -5,7 +5,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import "./styles.css";
 
 function AppContent() {
-  const { recoveryMode, user, loading } = useAuth();
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -13,10 +13,6 @@ function AppContent() {
         <LoadingLogo label="Abrindo suas financas..." />
       </main>
     );
-  }
-
-  if (recoveryMode) {
-    return <AuthScreen />;
   }
 
   return user ? <FinanceDashboard /> : <AuthScreen />;

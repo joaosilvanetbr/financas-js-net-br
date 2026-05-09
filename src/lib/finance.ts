@@ -104,6 +104,22 @@ export function getMonthRange(key: string) {
   };
 }
 
+export function sortTransactions(items: Transaction[]) {
+  return [...items].sort((a, b) => b.entry_date.localeCompare(a.entry_date));
+}
+
+export function sortCategories(items: Category[]) {
+  return [...items].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+}
+
+export function sortRecurring(items: RecurringTransaction[]) {
+  return [...items].sort((a, b) => a.day_of_month - b.day_of_month);
+}
+
+export function isInSelectedMonth(entryDate: string, selectedMonth: string) {
+  return entryDate.startsWith(`${selectedMonth}-`);
+}
+
 export function calculateSummary(transactions: Transaction[], recurring: RecurringTransaction[]) {
   const income = transactions
     .filter((item) => item.type === "entrada")
