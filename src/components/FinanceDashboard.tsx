@@ -54,6 +54,7 @@ import {
   upsertCategoryLimit,
 } from "../lib/dashboard-api";
 import { DashboardModal } from "./dashboard/DashboardModal";
+import { DashboardSkeleton } from "./dashboard/DashboardSkeleton";
 import { SummaryCard } from "./dashboard/SummaryCard";
 import { TransactionCards } from "./dashboard/TransactionCards";
 import { ResumoTab } from "./dashboard/tabs/ResumoTab";
@@ -788,14 +789,6 @@ export function FinanceDashboard() {
               left: "50%",
               transform: "translateX(-50%)",
               zIndex: 9999,
-              padding: "12px 24px",
-              borderRadius: "8px",
-              background: messageTone === "error" ? "#d6336c" : messageTone === "success" ? "#2f9e44" : "#1971c2",
-              color: "#fff",
-              fontWeight: 500,
-              boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
-              animation: "toastIn 0.25s ease",
-              whiteSpace: "nowrap",
             }}
           >
             {message}
@@ -808,6 +801,10 @@ export function FinanceDashboard() {
         </nav>
 
         {/* === ABAS === */}
+        {loading ? (
+          <DashboardSkeleton activeTab={activeTab} />
+        ) : (
+          <>
         {activeTab === "resumo" && (
           <ResumoTab
             transactions={transactions}
@@ -914,6 +911,8 @@ export function FinanceDashboard() {
             onUpdateEmail={handleUpdateUsername}
             onUpdatePassword={handleUpdatePassword}
           />
+        )}
+          </>
         )}
 
         {/* === MODAIS === */}
