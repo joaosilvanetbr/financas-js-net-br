@@ -18,6 +18,12 @@ async function handleGet(env: Env, userId: string) {
 async function handlePost(request: Request, env: Env, userId: string) {
   const body = await request.json();
 
+  if (body.category_id) {
+    const cat = await env.DB.prepare("SELECT 1 FROM categories WHERE id = ? AND user_id = ?")
+      .bind(body.category_id, userId).first();
+    if (!cat) return errorResponse("Categoria invalida", 400);
+  }
+
   // Verifica se ja existe
   const existing = await env.DB.prepare(
     "SELECT id FROM category_limits WHERE user_id = ? AND category_id = ?"
@@ -29,7 +35,7 @@ async function handlePost(request: Request, env: Env, userId: string) {
       "UPDATE category_limits SET amount_cents = ?, updated_at = unixepoch() WHERE id = ? AND user_id = ?"
     ).bind(body.amount_cents, existing.id, userId).run();
 
-    const row = await env.DB.prepare("SELECT * FROM category_limits WHERE id = ?").bind(existing.id).first();
+    const row = await env.DB.prepare("SELECT * FROM category_limits WHERE id = ? AND user_id = ?").bind(existing.id, userId).first();
     return jsonResponse({ data: row });
   } else {
     // Insert
@@ -39,7 +45,7 @@ async function handlePost(request: Request, env: Env, userId: string) {
        VALUES (?, ?, ?, ?, unixepoch(), unixepoch())`
     ).bind(id, userId, body.category_id, body.amount_cents).run();
 
-    const row = await env.DB.prepare("SELECT * FROM category_limits WHERE id = ?").bind(id).first();
+    const row = await env.DB.prepare("SELECT * FROM category_limits WHERE id = ? AND user_id = ?").bind(id, userId).first();
     return jsonResponse({ data: row }, 201);
   }
 }
@@ -55,8 +61,7 @@ async function handleDelete(request: Request, env: Env, userId: string) {
 }
 
 export const onRequest = async ({ request, env }: { request: Request; env: Env }) => {
-  (globalThis as any).env = env;
-  const auth = await getAuthUser(request);
+  const auth = await getAuthUser(request, env.JWT_SECRET);
   if (!auth) return unauthorizedResponse();
 
   if (request.method === "GET") return handleGet(env, auth.userId);

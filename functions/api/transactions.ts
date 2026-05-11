@@ -32,6 +32,17 @@ async function handlePost(request: Request, env: Env, userId: string) {
     return errorResponse("Descricao, data e valor obrigatorios");
   }
 
+  if (body.category_id) {
+    const cat = await env.DB.prepare("SELECT 1 FROM categories WHERE id = ? AND user_id = ?")
+      .bind(body.category_id, userId).first();
+    if (!cat) return errorResponse("Categoria invalida", 400);
+  }
+
+  const amount = Number(body.amount_cents);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return errorResponse("Valor deve ser maior que zero", 400);
+  }
+
   const id = crypto.randomUUID();
 
   await env.DB.prepare(
@@ -52,7 +63,7 @@ async function handlePost(request: Request, env: Env, userId: string) {
     body.is_paid ? 1 : 0
   ).run();
 
-  const row = await env.DB.prepare("SELECT * FROM transactions WHERE id = ?").bind(id).first();
+  const row = await env.DB.prepare("SELECT * FROM transactions WHERE id = ? AND user_id = ?").bind(id, userId).first();
   return jsonResponse({ data: { ...row, is_paid: Boolean(row?.is_paid) } }, 201);
 }
 
@@ -63,6 +74,17 @@ async function handlePut(request: Request, env: Env, userId: string) {
   if (!id) return errorResponse("ID obrigatorio");
 
   const body = await request.json();
+
+  if (body.category_id) {
+    const cat = await env.DB.prepare("SELECT 1 FROM categories WHERE id = ? AND user_id = ?")
+      .bind(body.category_id, userId).first();
+    if (!cat) return errorResponse("Categoria invalida", 400);
+  }
+
+  const amount = Number(body.amount_cents);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return errorResponse("Valor deve ser maior que zero", 400);
+  }
 
   await env.DB.prepare(
     `UPDATE transactions SET
@@ -81,7 +103,7 @@ async function handlePut(request: Request, env: Env, userId: string) {
     userId
   ).run();
 
-  const row = await env.DB.prepare("SELECT * FROM transactions WHERE id = ?").bind(id).first();
+  const row = await env.DB.prepare("SELECT * FROM transactions WHERE id = ? AND user_id = ?").bind(id, userId).first();
   return jsonResponse({ data: { ...row, is_paid: Boolean(row?.is_paid) } });
 }
 
@@ -107,13 +129,12 @@ async function handlePatch(request: Request, env: Env, userId: string) {
     "UPDATE transactions SET is_paid = ? WHERE id = ? AND user_id = ?"
   ).bind(body.is_paid ? 1 : 0, id, userId).run();
 
-  const row = await env.DB.prepare("SELECT * FROM transactions WHERE id = ?").bind(id).first();
+  const row = await env.DB.prepare("SELECT * FROM transactions WHERE id = ? AND user_id = ?").bind(id, userId).first();
   return jsonResponse({ data: { ...row, is_paid: Boolean(row?.is_paid) } });
 }
 
 export const onRequest = async ({ request, env }: { request: Request; env: Env }) => {
-  (globalThis as any).env = env;
-  const auth = await getAuthUser(request);
+  const auth = await getAuthUser(request, env.JWT_SECRET);
   if (!auth) return unauthorizedResponse();
 
   if (request.method === "GET") return handleGet(request, env, auth.userId);

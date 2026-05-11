@@ -61,3 +61,6 @@ CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category_id
 CREATE INDEX IF NOT EXISTS idx_transactions_recurring ON transactions(source_recurring_id);
 CREATE INDEX IF NOT EXISTS idx_recurring_user ON recurring_transactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_recurring_category ON recurring_transactions(category_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_transactions_recurring_month
+ON transactions(user_id, source_recurring_id, source_month)
+WHERE source_recurring_id IS NOT NULL;

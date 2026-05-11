@@ -7,8 +7,6 @@ export interface Env {
 }
 
 export const onRequestPost = async ({ request, env }: { request: Request; env: Env }) => {
-  (globalThis as any).env = env;
-
   try {
     const { username, password } = await request.json();
 
@@ -33,7 +31,7 @@ export const onRequestPost = async ({ request, env }: { request: Request; env: E
       "INSERT INTO users (id, username, password_hash, created_at) VALUES (?, ?, ?, unixepoch())"
     ).bind(id, username.toLowerCase(), passwordHash).run();
 
-    const token = await signToken({ userId: id, email: username.toLowerCase() });
+    const token = await signToken({ userId: id, email: username.toLowerCase() }, env.JWT_SECRET);
 
     return jsonResponse({ token, user: { id, username: username.toLowerCase() } });
   } catch (err: any) {

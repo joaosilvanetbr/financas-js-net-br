@@ -19,6 +19,18 @@ async function handleGet(env: Env, userId: string) {
 // POST
 async function handlePost(request: Request, env: Env, userId: string) {
   const body = await request.json();
+
+  if (body.category_id) {
+    const cat = await env.DB.prepare("SELECT 1 FROM categories WHERE id = ? AND user_id = ?")
+      .bind(body.category_id, userId).first();
+    if (!cat) return errorResponse("Categoria invalida", 400);
+  }
+
+  const amount = Number(body.amount_cents);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return errorResponse("Valor deve ser maior que zero", 400);
+  }
+
   const id = crypto.randomUUID();
 
   await env.DB.prepare(
@@ -28,7 +40,7 @@ async function handlePost(request: Request, env: Env, userId: string) {
   ).bind(id, userId, body.type, body.description.trim(), body.amount_cents,
     body.category_id || null, body.day_of_month).run();
 
-  const row = await env.DB.prepare("SELECT * FROM recurring_transactions WHERE id = ?").bind(id).first();
+  const row = await env.DB.prepare("SELECT * FROM recurring_transactions WHERE id = ? AND user_id = ?").bind(id, userId).first();
   return jsonResponse({ data: { ...row, is_active: Boolean(row?.is_active) } }, 201);
 }
 
@@ -39,6 +51,17 @@ async function handlePut(request: Request, env: Env, userId: string) {
   if (!id) return errorResponse("ID obrigatorio");
 
   const body = await request.json();
+
+  if (body.category_id) {
+    const cat = await env.DB.prepare("SELECT 1 FROM categories WHERE id = ? AND user_id = ?")
+      .bind(body.category_id, userId).first();
+    if (!cat) return errorResponse("Categoria invalida", 400);
+  }
+
+  const amount = Number(body.amount_cents);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return errorResponse("Valor deve ser maior que zero", 400);
+  }
 
   await env.DB.prepare(
     `UPDATE recurring_transactions SET
@@ -51,7 +74,7 @@ async function handlePut(request: Request, env: Env, userId: string) {
     body.is_active ? 1 : 0, id, userId
   ).run();
 
-  const row = await env.DB.prepare("SELECT * FROM recurring_transactions WHERE id = ?").bind(id).first();
+  const row = await env.DB.prepare("SELECT * FROM recurring_transactions WHERE id = ? AND user_id = ?").bind(id, userId).first();
   return jsonResponse({ data: { ...row, is_active: Boolean(row?.is_active) } });
 }
 
@@ -77,13 +100,12 @@ async function handlePatch(request: Request, env: Env, userId: string) {
     "UPDATE recurring_transactions SET is_active = ? WHERE id = ? AND user_id = ?"
   ).bind(body.is_active ? 1 : 0, id, userId).run();
 
-  const row = await env.DB.prepare("SELECT * FROM recurring_transactions WHERE id = ?").bind(id).first();
+  const row = await env.DB.prepare("SELECT * FROM recurring_transactions WHERE id = ? AND user_id = ?").bind(id, userId).first();
   return jsonResponse({ data: { ...row, is_active: Boolean(row?.is_active) } });
 }
 
 export const onRequest = async ({ request, env }: { request: Request; env: Env }) => {
-  (globalThis as any).env = env;
-  const auth = await getAuthUser(request);
+  const auth = await getAuthUser(request, env.JWT_SECRET);
   if (!auth) return unauthorizedResponse();
 
   if (request.method === "GET") return handleGet(env, auth.userId);

@@ -29,7 +29,7 @@ async function handlePost(request: Request, env: Env, userId: string) {
       "INSERT INTO categories (id, user_id, name, type, color, created_at) VALUES (?, ?, ?, ?, ?, unixepoch())"
     ).bind(id, userId, body.name.trim(), body.type, body.color || "#1971c2").run();
 
-    const row = await env.DB.prepare("SELECT * FROM categories WHERE id = ?").bind(id).first();
+    const row = await env.DB.prepare("SELECT * FROM categories WHERE id = ? AND user_id = ?").bind(id, userId).first();
     return jsonResponse({ data: row }, 201);
   } catch (e: any) {
     if (e.message?.includes("UNIQUE")) {
@@ -52,7 +52,7 @@ async function handlePut(request: Request, env: Env, userId: string) {
       "UPDATE categories SET name = ?, color = ? WHERE id = ? AND user_id = ?"
     ).bind(body.name.trim(), body.color, id, userId).run();
 
-    const row = await env.DB.prepare("SELECT * FROM categories WHERE id = ?").bind(id).first();
+    const row = await env.DB.prepare("SELECT * FROM categories WHERE id = ? AND user_id = ?").bind(id, userId).first();
     return jsonResponse({ data: row });
   } catch (e: any) {
     if (e.message?.includes("UNIQUE")) {
@@ -68,26 +68,18 @@ async function handleDelete(request: Request, env: Env, userId: string) {
   const id = url.searchParams.get("id");
   if (!id) return errorResponse("ID obrigatorio");
 
-  await env.DB.prepare("DELETE FROM categories WHERE id = ? AND user_id = ?").bind(id, userId).run();
-
-  // Remove limites associados
-  await env.DB.prepare("DELETE FROM category_limits WHERE category_id = ? AND user_id = ?").bind(id, userId).run();
-
-  // Limpa referencias em transactions
-  await env.DB.prepare(
-    "UPDATE transactions SET category_id = NULL WHERE category_id = ? AND user_id = ?"
-  ).bind(id, userId).run();
-
-  await env.DB.prepare(
-    "UPDATE recurring_transactions SET category_id = NULL WHERE category_id = ? AND user_id = ?"
-  ).bind(id, userId).run();
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM categories WHERE id = ? AND user_id = ?").bind(id, userId),
+    env.DB.prepare("DELETE FROM category_limits WHERE category_id = ? AND user_id = ?").bind(id, userId),
+    env.DB.prepare("UPDATE transactions SET category_id = NULL WHERE category_id = ? AND user_id = ?").bind(id, userId),
+    env.DB.prepare("UPDATE recurring_transactions SET category_id = NULL WHERE category_id = ? AND user_id = ?").bind(id, userId),
+  ]);
 
   return jsonResponse({ success: true });
 }
 
 export const onRequest = async ({ request, env }: { request: Request; env: Env }) => {
-  (globalThis as any).env = env;
-  const auth = await getAuthUser(request);
+  const auth = await getAuthUser(request, env.JWT_SECRET);
   if (!auth) return unauthorizedResponse();
 
   if (request.method === "GET") return handleGet(env, auth.userId);

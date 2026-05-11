@@ -23,10 +23,6 @@ type CategorySortKey = "type" | "name";
 
 const palette = ["#2f9e44", "#1971c2", "#f08c00", "#7048e8", "#d6336c", "#0ca678"];
 
-function isDuplicateCategoryError(error: { code?: string } | null) {
-  return error?.code === "23505";
-}
-
 export function CategoriasTab({
   categories,
   isBusy,
@@ -78,11 +74,21 @@ export function CategoriasTab({
         </div>
       </div>
 
-      <div className="subtabbar" aria-label="Tipo de categoria">
-        <button className={activeType === "saida" ? "active" : ""} onClick={() => setActiveType("saida")}>
+      <div className="subtabbar" role="tablist" aria-label="Tipo de categoria">
+        <button
+          role="tab"
+          aria-selected={activeType === "saida"}
+          className={activeType === "saida" ? "active" : ""}
+          onClick={() => setActiveType("saida")}
+        >
           Saidas
         </button>
-        <button className={activeType === "entrada" ? "active" : ""} onClick={() => setActiveType("entrada")}>
+        <button
+          role="tab"
+          aria-selected={activeType === "entrada"}
+          className={activeType === "entrada" ? "active" : ""}
+          onClick={() => setActiveType("entrada")}
+        >
           Entradas
         </button>
       </div>

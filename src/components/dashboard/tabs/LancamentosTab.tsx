@@ -180,13 +180,16 @@ export function LancamentosTab({
       </form>
 
       <div className="filter-bar" style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "12px" }}>
+        <label className="visually-hidden" htmlFor="search-transactions">Buscar</label>
         <input
+          id="search-transactions"
           placeholder="Buscar por descricao, categoria ou valor..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={{ flex: 1, minWidth: "200px" }}
         />
-        <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+        <label className="visually-hidden" htmlFor="filter-category">Categoria</label>
+        <select id="filter-category" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
           <option value="">Todas as categorias</option>
           {categories.map((c) => (
             <option key={c.id} value={c.id}>
@@ -194,7 +197,8 @@ export function LancamentosTab({
             </option>
           ))}
         </select>
-        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)}>
+        <label className="visually-hidden" htmlFor="filter-status">Status</label>
+        <select id="filter-status" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)}>
           <option value="">Todos os status</option>
           <option value="paid">Pago</option>
           <option value="pending">Pendente</option>

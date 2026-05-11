@@ -12,6 +12,7 @@ import { SummaryCard } from "../SummaryCard";
 type RelatoriosTabProps = {
   transactions: Transaction[];
   recurring: RecurringTransaction[];
+  generatedRecurringIds?: Set<string>;
   categories: Category[];
   categoryLimits: CategoryLimit[];
   selectedMonth: string;
@@ -29,6 +30,7 @@ function daysInMonthKey(value: string) {
 export function RelatoriosTab({
   transactions,
   recurring,
+  generatedRecurringIds,
   categories,
   categoryLimits,
   selectedMonth,
@@ -36,7 +38,7 @@ export function RelatoriosTab({
   onExportCSV,
   categoryNameFor,
 }: RelatoriosTabProps) {
-  const summary = calculateSummary(transactions, recurring);
+  const summary = calculateSummary(transactions, recurring, generatedRecurringIds);
   const expenseCategories = categories.filter((item) => item.type === "saida");
   const monthExpenses = transactions.filter((item) => item.type === "saida");
 

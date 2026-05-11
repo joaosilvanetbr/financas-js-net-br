@@ -46,11 +46,13 @@ export const defaultCategories: Array<Omit<Category, "id">> = [
 ];
 
 export function toCents(value: string) {
-  const normalized = value.replace(/\./g, "").replace(",", ".").trim();
+  const trimmed = value.trim();
+  const hasComma = trimmed.includes(",");
+  const normalized = hasComma
+    ? trimmed.replace(/\./g, "").replace(",", ".")
+    : trimmed;
   const number = Number(normalized);
-  if (!Number.isFinite(number) || number <= 0) {
-    return null;
-  }
+  if (!Number.isFinite(number) || number <= 0) return null;
   return Math.round(number * 100);
 }
 
@@ -120,7 +122,11 @@ export function isInSelectedMonth(entryDate: string, selectedMonth: string) {
   return entryDate.startsWith(`${selectedMonth}-`);
 }
 
-export function calculateSummary(transactions: Transaction[], recurring: RecurringTransaction[]) {
+export function calculateSummary(
+  transactions: Transaction[],
+  recurring: RecurringTransaction[],
+  generatedRecurringIds?: Set<string>,
+) {
   const income = transactions
     .filter((item) => item.type === "entrada")
     .reduce((total, item) => total + item.amount_cents, 0);
@@ -128,10 +134,10 @@ export function calculateSummary(transactions: Transaction[], recurring: Recurri
     .filter((item) => item.type === "saida")
     .reduce((total, item) => total + item.amount_cents, 0);
   const expectedIncome = recurring
-    .filter((item) => item.is_active && item.type === "entrada")
+    .filter((item) => item.is_active && item.type === "entrada" && !generatedRecurringIds?.has(item.id))
     .reduce((total, item) => total + item.amount_cents, 0);
   const expectedExpense = recurring
-    .filter((item) => item.is_active && item.type === "saida")
+    .filter((item) => item.is_active && item.type === "saida" && !generatedRecurringIds?.has(item.id))
     .reduce((total, item) => total + item.amount_cents, 0);
 
   return {

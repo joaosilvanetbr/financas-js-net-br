@@ -6,9 +6,7 @@ export interface Env {
 }
 
 export const onRequestGet = async ({ request, env }: { request: Request; env: Env }) => {
-  (globalThis as any).env = env;
-
-  const auth = await getAuthUser(request);
+  const auth = await getAuthUser(request, env.JWT_SECRET);
   if (!auth) return unauthorizedResponse();
 
   const user = await env.DB.prepare(

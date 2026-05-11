@@ -6,6 +6,7 @@ import { TransactionCards } from "../TransactionCards";
 type ResumoTabProps = {
   transactions: Transaction[];
   recurring: RecurringTransaction[];
+  generatedRecurringIds?: Set<string>;
   loading: boolean;
   isBusy: boolean;
   pendingAction: string | null;
@@ -19,6 +20,7 @@ type ResumoTabProps = {
 export function ResumoTab({
   transactions,
   recurring,
+  generatedRecurringIds,
   loading,
   isBusy,
   pendingAction,
@@ -28,7 +30,7 @@ export function ResumoTab({
   onEdit,
   onTogglePaid,
 }: ResumoTabProps) {
-  const summary = calculateSummary(transactions, recurring);
+  const summary = calculateSummary(transactions, recurring, generatedRecurringIds);
   const monthExpenses = transactions.filter((item) => item.type === "saida");
 
   return (

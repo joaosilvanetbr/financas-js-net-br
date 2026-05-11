@@ -48,8 +48,7 @@ async function handlePut(request: Request, env: Env, userId: string) {
 }
 
 export const onRequest = async ({ request, env }: { request: Request; env: Env }) => {
-  (globalThis as any).env = env;
-  const auth = await getAuthUser(request);
+  const auth = await getAuthUser(request, env.JWT_SECRET);
   if (!auth) return unauthorizedResponse();
 
   if (request.method === "GET") return handleGet(env, auth.userId);

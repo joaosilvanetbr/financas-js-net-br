@@ -45,7 +45,7 @@ export const authApi = {
 // Profile
 export const profileApi = {
   get: () => fetchApi("/profile"),
-  update: (data: { display_name?: string; password?: string }) =>
+  update: (data: { display_name?: string; username?: string; password?: string }) =>
     fetchApi("/profile", { method: "PUT", body: JSON.stringify(data) }),
 };
 

@@ -1,32 +1,26 @@
 import { SignJWT, jwtVerify } from "jose";
 
-const JWT_SECRET_KEY = () => {
-  const secret = (globalThis as any).env?.JWT_SECRET;
-  if (!secret) throw new Error("JWT_SECRET nao configurado");
-  return new TextEncoder().encode(secret);
-};
-
-export async function signToken(payload: { userId: string; email: string }) {
+export async function signToken(payload: { userId: string; email: string }, secret: string) {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("30d")
-    .sign(JWT_SECRET_KEY());
+    .sign(new TextEncoder().encode(secret));
 }
 
-export async function verifyToken(token: string) {
+export async function verifyToken(token: string, secret: string) {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET_KEY(), { clockTolerance: 60 });
+    const { payload } = await jwtVerify(token, new TextEncoder().encode(secret), { clockTolerance: 60 });
     return payload as { userId: string; email: string };
   } catch {
     return null;
   }
 }
 
-export function getAuthUser(request: Request) {
+export function getAuthUser(request: Request, jwtSecret: string) {
   const auth = request.headers.get("authorization");
   if (!auth?.startsWith("Bearer ")) return null;
-  return verifyToken(auth.slice(7));
+  return verifyToken(auth.slice(7), jwtSecret);
 }
 
 export function jsonResponse(data: unknown, status = 200) {

@@ -7,8 +7,6 @@ export interface Env {
 }
 
 export const onRequestPost = async ({ request, env }: { request: Request; env: Env }) => {
-  (globalThis as any).env = env;
-
   try {
     const { username, password } = await request.json();
 
@@ -29,7 +27,7 @@ export const onRequestPost = async ({ request, env }: { request: Request; env: E
       return errorResponse("Usuario ou senha incorretos.", 401);
     }
 
-    const token = await signToken({ userId: user.id, email: user.username });
+    const token = await signToken({ userId: user.id, email: user.username }, env.JWT_SECRET);
 
     return jsonResponse({
       token,

@@ -1,4 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { useMessage } from "../hooks/useMessage";
 import { profileApi } from "../lib/api-client";
 import {
   BarChart3,
@@ -76,7 +77,6 @@ type DashboardTab =
   | "relatorios"
   | "configuracoes";
 
-type NoticeTone = "info" | "success" | "error";
 type PendingAction = "refresh" | "transaction" | "category" | "limit" | "recurring" | "paid" | "profile" | "email" | "password" | "confirm" | null;
 
 type ConfirmDialog = {
@@ -128,29 +128,13 @@ function shiftMonthKey(value: string, delta: number) {
   return `${nextYear}-${nextMonth}`;
 }
 
-function inferNoticeTone(text: string): NoticeTone {
-  const normalized = text.toLowerCase();
-  if (
-    normalized.includes("nao foi possivel") ||
-    normalized.includes("preencha") ||
-    normalized.includes("informe") ||
-    normalized.includes("precisa") ||
-    normalized.includes("nao confere") ||
-    normalized.includes("ja foi") ||
-    normalized.includes("pausada") ||
-    normalized.includes("ainda nao")
-  ) {
-    return "error";
-  }
-  return "success";
-}
-
 function replaceItemById<T extends { id: string }>(items: T[], nextItem: T) {
   return items.map((item) => (item.id === nextItem.id ? nextItem : item));
 }
 
-function isDuplicateCategoryError(error: { code?: string } | null) {
-  return error?.code === "23505";
+function isDuplicateCategoryError(error: any) {
+  const msg = error?.error || error?.message || String(error);
+  return typeof msg === "string" && /unique|duplicate/i.test(msg);
 }
 
 /* ------------------------------------------------------------------ */
@@ -170,8 +154,7 @@ export function FinanceDashboard() {
   const [activeTab, setActiveTab] = useState<DashboardTab>("resumo");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [message, setRawMessage] = useState("");
-  const [messageTone, setMessageTone] = useState<NoticeTone>("info");
+  const { message, messageTone, setMessage } = useMessage(6500);
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog | null>(null);
   const [mobileInputFocused, setMobileInputFocused] = useState(false);
@@ -189,24 +172,24 @@ export function FinanceDashboard() {
 
   const isBusy = pendingAction !== null;
 
-  const summary = useMemo(() => calculateSummary(transactions, recurring), [transactions, recurring]);
+  const generatedRecurringIds = useMemo(() => {
+    return new Set(
+      transactions
+        .filter((t) => t.source_recurring_id && t.source_month === selectedMonth)
+        .map((t) => t.source_recurring_id!),
+    );
+  }, [transactions, selectedMonth]);
 
-  function setMessage(text: string, tone?: NoticeTone) {
-    setRawMessage(text);
-    setMessageTone(text ? tone ?? inferNoticeTone(text) : "info");
-  }
+  const summary = useMemo(
+    () => calculateSummary(transactions, recurring, generatedRecurringIds),
+    [transactions, recurring, generatedRecurringIds],
+  );
 
   /* -- carregamento de dados -- */
   useEffect(() => {
     if (!user) return;
     loadData();
   }, [selectedMonth, user]);
-
-  useEffect(() => {
-    if (!message) return;
-    const timer = window.setTimeout(() => setRawMessage(""), 6500);
-    return () => window.clearTimeout(timer);
-  }, [message]);
 
   /* -- mobile keyboard handling -- */
   useEffect(() => {
@@ -451,7 +434,7 @@ export function FinanceDashboard() {
 
       if (error) {
         setMessage(
-          error.code === "23505" ? "Esta recorrencia ja foi gerada neste mes." : "Nao foi possivel gerar o lancamento.",
+          isDuplicateCategoryError(error) ? "Esta recorrencia ja foi gerada neste mes." : "Nao foi possivel gerar o lancamento.",
         );
         return;
       }
@@ -623,8 +606,7 @@ export function FinanceDashboard() {
     if (isBusy) return { error: true };
     setPendingAction("email");
     try {
-      const { error } = await profileApi.update({ display_name: undefined, password: undefined }) as any;
-      // TODO: implement username update via profileApi
+      const { error } = await profileApi.update({ username }) as any;
       setMessage(error ? "Nao foi possivel atualizar o usuario." : "Usuario atualizado.");
       return { error };
     } catch {
@@ -639,7 +621,7 @@ export function FinanceDashboard() {
     if (isBusy) return { error: true };
     setPendingAction("password");
     try {
-      const { error } = { error: null }; // TODO: implement password update
+      const { error } = await profileApi.update({ password }) as any;
       if (error) {
         setMessage("Nao foi possivel atualizar a senha.");
         return { error };
@@ -655,6 +637,12 @@ export function FinanceDashboard() {
   }
 
   /* -- exportar CSV -- */
+  const sanitizeCsv = (val: string | number) => {
+    const str = String(val).replace(/"/g, '""');
+    if (/^[=?+\-@]/.test(str)) return `'${str}`;
+    return `"${str}"`;
+  };
+
   function exportReportCSV() {
     const rows = [
       ["Data", "Descricao", "Categoria", "Valor", "Tipo", "Status"],
@@ -667,7 +655,7 @@ export function FinanceDashboard() {
         t.is_paid ? "Pago" : "Pendente",
       ]),
     ];
-    const csv = rows.map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(";")).join("\n");
+    const csv = rows.map((r) => r.map((cell) => sanitizeCsv(cell)).join(";")).join("\n");
     const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -791,6 +779,8 @@ export function FinanceDashboard() {
         {/* Toast */}
         {message && (
           <div
+            role="status"
+            aria-live="polite"
             className={`toast ${messageTone}`}
             style={{
               position: "fixed",
@@ -822,6 +812,7 @@ export function FinanceDashboard() {
           <ResumoTab
             transactions={transactions}
             recurring={recurring}
+            generatedRecurringIds={generatedRecurringIds}
             loading={loading}
             isBusy={isBusy}
             pendingAction={pendingAction}
@@ -902,6 +893,7 @@ export function FinanceDashboard() {
           <RelatoriosTab
             transactions={transactions}
             recurring={recurring}
+            generatedRecurringIds={generatedRecurringIds}
             categories={categories}
             categoryLimits={categoryLimits}
             selectedMonth={selectedMonth}
@@ -1024,7 +1016,7 @@ export function FinanceDashboard() {
                 const amount = toCents(editingRecurring.amount);
                 const day = Number(editingRecurring.day_of_month);
                 if (!amount || !editingRecurring.description.trim() || day < 1 || day > 28) {
-                  setMessage("Preencha recorrencia com valor e dia entre 1 e 31.");
+                  setMessage("Preencha recorrencia com valor e dia entre 1 e 28.");
                   return;
                 }
                 setPendingAction("recurring");
