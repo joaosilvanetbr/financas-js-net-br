@@ -48,7 +48,7 @@ export const onRequestGet = async ({ request, env }: { request: Request; env: En
       transactions: (transactions || []).map((t: any) => ({ ...t, is_paid: Boolean(t.is_paid) })),
       recurring: (recurring || []).map((r: any) => ({ ...r, is_active: Boolean(r.is_active) })),
     });
-  } catch {
-    return errorResponse("Erro ao carregar dashboard", 500);
+  } catch (err: any) {
+    return errorResponse(err.message || "Erro ao carregar dashboard", 500);
   }
 };
