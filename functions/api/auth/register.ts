@@ -36,7 +36,7 @@ export const onRequestPost = async ({ request, env }: { request: Request; env: E
     const token = await signToken({ userId: id, email: username.toLowerCase() });
 
     return jsonResponse({ token, user: { id, username: username.toLowerCase() } });
-  } catch {
-    return errorResponse("Nao foi possivel criar a conta.", 500);
+  } catch (err: any) {
+    return errorResponse(err.message || "Nao foi possivel criar a conta.", 500);
   }
 };

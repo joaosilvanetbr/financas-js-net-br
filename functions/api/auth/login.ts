@@ -35,7 +35,7 @@ export const onRequestPost = async ({ request, env }: { request: Request; env: E
       token,
       user: { id: user.id, username: user.username, display_name: user.display_name },
     });
-  } catch {
-    return errorResponse("Nao foi possivel entrar.", 500);
+  } catch (err: any) {
+    return errorResponse(err.message || "Nao foi possivel entrar.", 500);
   }
 };
