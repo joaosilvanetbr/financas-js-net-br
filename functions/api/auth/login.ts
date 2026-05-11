@@ -1,5 +1,5 @@
 import bcryptjs from "bcryptjs";
-import { signToken, jsonResponse, errorResponse } from "../../_shared/auth";
+import { signToken, jsonResponse, errorResponse, checkRateLimit } from "../../_shared/auth";
 
 export interface Env {
   DB: D1Database;
@@ -7,6 +7,9 @@ export interface Env {
 }
 
 export const onRequestPost = async ({ request, env }: { request: Request; env: Env }) => {
+  const rateLimit = checkRateLimit(request);
+  if (rateLimit) return rateLimit;
+
   try {
     const { username, password } = await request.json();
 

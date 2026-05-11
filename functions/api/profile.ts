@@ -25,9 +25,13 @@ async function handlePut(request: Request, env: Env, userId: string) {
   const body = await request.json() as { display_name?: string; username?: string; password?: string };
 
   if (body.display_name !== undefined) {
+    const trimmed = body.display_name.trim();
+    if (trimmed.length > 50) {
+      return errorResponse("Nome de exibicao deve ter no maximo 50 caracteres", 400);
+    }
     await env.DB.prepare(
       "UPDATE users SET display_name = ? WHERE id = ?"
-    ).bind(body.display_name || null, userId).run();
+    ).bind(trimmed || null, userId).run();
   }
 
   if (body.username) {

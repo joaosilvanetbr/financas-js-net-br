@@ -1,7 +1,15 @@
+/// <reference lib="webworker" />
+// Service Worker — Financas Pessoais v8
+// Compila para dist/sw.js via tsc -p tsconfig.sw.json
+
+export {}; // torna modulo — permite redeclarar self
+
+declare const self: ServiceWorkerGlobalScope;
+
 const SHELL_CACHE = "financas-shell-v8";
 const DATA_CACHE = "financas-data-v8";
 
-const APP_SHELL = [
+const APP_SHELL: readonly string[] = [
   "/",
   "/manifest.webmanifest",
   "/icon-v2.svg",
@@ -10,20 +18,20 @@ const APP_SHELL = [
   "/icon-v2-maskable-512.png",
 ];
 
-self.addEventListener("install", (event) => {
+self.addEventListener("install", (event: ExtendableEvent) => {
   event.waitUntil(
     caches
       .open(SHELL_CACHE)
-      .then((cache) => cache.addAll(APP_SHELL))
+      .then((cache: Cache) => cache.addAll([...APP_SHELL]))
       .then(() => self.skipWaiting()),
   );
 });
 
-self.addEventListener("activate", (event) => {
+self.addEventListener("activate", (event: ExtendableEvent) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) =>
+      .then((keys: string[]) =>
         Promise.all(
           keys
             .filter((key) => key !== SHELL_CACHE && key !== DATA_CACHE)
@@ -34,11 +42,11 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-function isAppShellRequest(url, request) {
+function isAppShellRequest(url: URL, request: Request): boolean {
   return url.origin === self.location.origin && request.mode === "navigate";
 }
 
-self.addEventListener("fetch", (event) => {
+self.addEventListener("fetch", (event: FetchEvent) => {
   const request = event.request;
   const url = new URL(request.url);
 
@@ -58,7 +66,7 @@ self.addEventListener("fetch", (event) => {
           cached ||
           fetch(request).then((response) => {
             const copy = response.clone();
-            caches.open(SHELL_CACHE).then((c) => c.put("/", copy));
+            caches.open(SHELL_CACHE).then((c: Cache) => c.put("/", copy));
             return response;
           })
         );
@@ -78,7 +86,7 @@ self.addEventListener("fetch", (event) => {
           }
           const copy = response.clone();
           if (request.method === "GET") {
-            caches.open(SHELL_CACHE).then((c) => c.put(request, copy));
+            caches.open(SHELL_CACHE).then((c: Cache) => c.put(request, copy));
           }
           return response;
         });
