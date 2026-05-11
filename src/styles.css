@@ -274,6 +274,7 @@ select {
   border: 1px solid var(--border);
   border-radius: 6px;
   color: var(--text);
+  color-scheme: dark;
   min-height: 44px;
   padding: 10px 12px;
   transition:
