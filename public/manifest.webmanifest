@@ -12,6 +12,27 @@
   "dir": "ltr",
   "lang": "pt-BR",
   "categories": ["finance", "productivity"],
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "handle_links": "preferred",
+  "launch_handler": {
+    "client_mode": ["navigate-existing", "auto"]
+  },
+  "screenshots": [
+    {
+      "src": "/screenshot-desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Dashboard de financas no desktop"
+    },
+    {
+      "src": "/screenshot-mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Dashboard de financas no mobile"
+    }
+  ],
   "icons": [
     {
       "src": "/icon-v2.svg",

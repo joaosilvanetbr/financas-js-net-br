@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import { registerServiceWorker } from "./lib/sw-register";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -8,10 +9,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   </React.StrictMode>,
 );
 
+// Registro do Service Worker com suporte a updates
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {
-      // O app continua funcionando normalmente mesmo se o navegador bloquear o PWA.
+    registerServiceWorker().catch((err) => {
+      console.warn("[PWA] Falha no registro do SW:", err);
     });
   });
 }
