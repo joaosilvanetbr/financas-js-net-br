@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS categories (
   type TEXT NOT NULL CHECK (type IN ('entrada', 'saida')),
   color TEXT NOT NULL DEFAULT '#1971c2',
   created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-  UNIQUE (user_id, type, name)
+  UNIQUE (user_id, type, LOWER(TRIM(name)))
 );
 
 CREATE TABLE IF NOT EXISTS recurring_transactions (

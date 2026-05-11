@@ -169,7 +169,6 @@ export function FinanceDashboard() {
     useState<(RecurringForm & { id: string; is_active: boolean }) | null>(null);
   const [editingLimitCategoryId, setEditingLimitCategoryId] = useState<string | null>(null);
   const [limitForm, setLimitForm] = useState({ category_id: "", amount: "" });
-  const [displayNameState, setDisplayNameState] = useState("");
 
   const isBusy = pendingAction !== null;
 
@@ -238,7 +237,6 @@ export function FinanceDashboard() {
       const results = await loadDashboardData(selectedMonth);
 
       setProfile(results.profile);
-      setDisplayNameState(results.profile?.display_name ?? "");
       setCategories(sortCategories(results.categories));
       setCategoryLimits(results.categoryLimits);
       setTransactions(sortTransactions(results.transactions));

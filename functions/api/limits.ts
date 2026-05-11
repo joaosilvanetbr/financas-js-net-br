@@ -24,6 +24,11 @@ async function handlePost(request: Request, env: Env, userId: string) {
     if (!cat) return errorResponse("Categoria invalida", 400);
   }
 
+  const amount = Number(body.amount_cents);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return errorResponse("Valor do limite deve ser maior que zero", 400);
+  }
+
   // Verifica se ja existe
   const existing = await env.DB.prepare(
     "SELECT id FROM category_limits WHERE user_id = ? AND category_id = ?"

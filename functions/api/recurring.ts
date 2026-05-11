@@ -20,6 +20,10 @@ async function handleGet(env: Env, userId: string) {
 async function handlePost(request: Request, env: Env, userId: string) {
   const body = await request.json();
 
+  if (body.type !== "entrada" && body.type !== "saida") {
+    return errorResponse("Tipo deve ser 'entrada' ou 'saida'", 400);
+  }
+
   if (body.category_id) {
     const cat = await env.DB.prepare("SELECT 1 FROM categories WHERE id = ? AND user_id = ?")
       .bind(body.category_id, userId).first();
@@ -29,6 +33,11 @@ async function handlePost(request: Request, env: Env, userId: string) {
   const amount = Number(body.amount_cents);
   if (!Number.isFinite(amount) || amount <= 0) {
     return errorResponse("Valor deve ser maior que zero", 400);
+  }
+
+  const day = Number(body.day_of_month);
+  if (!Number.isInteger(day) || day < 1 || day > 28) {
+    return errorResponse("Dia do mes deve ser entre 1 e 28", 400);
   }
 
   const id = crypto.randomUUID();

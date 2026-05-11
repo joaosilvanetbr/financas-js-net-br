@@ -31,9 +31,14 @@ async function handlePut(request: Request, env: Env, userId: string) {
   }
 
   if (body.username) {
+    const lowerUsername = body.username.toLowerCase();
+    const existing = await env.DB.prepare("SELECT id FROM users WHERE username = ? AND id != ?").bind(lowerUsername, userId).first();
+    if (existing) {
+      return errorResponse("Este usuario ja esta em uso.");
+    }
     await env.DB.prepare(
       "UPDATE users SET username = ? WHERE id = ?"
-    ).bind(body.username.toLowerCase(), userId).run();
+    ).bind(lowerUsername, userId).run();
   }
 
   if (body.password) {

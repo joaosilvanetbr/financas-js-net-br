@@ -22,6 +22,10 @@ async function handlePost(request: Request, env: Env, userId: string) {
     return errorResponse("Nome e tipo obrigatorios");
   }
 
+  if (body.type !== "entrada" && body.type !== "saida") {
+    return errorResponse("Tipo deve ser 'entrada' ou 'saida'", 400);
+  }
+
   const id = crypto.randomUUID();
 
   try {

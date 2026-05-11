@@ -34,44 +34,8 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-function isSupabaseRequest(url) {
-  return url.hostname.includes("supabase.co");
-}
-
 function isAppShellRequest(url, request) {
   return url.origin === self.location.origin && request.mode === "navigate";
-}
-
-async function supabaseStaleWhileRevalidate(request) {
-  const cache = await caches.open(DATA_CACHE);
-  const cached = await cache.match(request);
-
-  const fetchPromise = fetch(request)
-    .then((response) => {
-      if (response && response.status === 200) {
-        cache.put(request, response.clone());
-      }
-      return response;
-    })
-    .catch(() => {
-      return cached || new Response(JSON.stringify({ error: "offline" }), {
-        status: 503,
-        headers: { "Content-Type": "application/json" },
-      });
-    });
-
-  return cached || fetchPromise;
-}
-
-async function mutationNetworkOnly(request) {
-  try {
-    return await fetch(request);
-  } catch (error) {
-    return new Response(JSON.stringify({ error: "offline", message: "Voce esta offline. A acao sera sincronizada quando a conexao voltar." }), {
-      status: 503,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
 }
 
 self.addEventListener("fetch", (event) => {
@@ -100,20 +64,6 @@ self.addEventListener("fetch", (event) => {
         );
       }),
     );
-    return;
-  }
-
-  if (isSupabaseRequest(url)) {
-    if (request.method === "POST" && !url.pathname.includes("/rest/v1/")) {
-      event.respondWith(mutationNetworkOnly(request));
-      return;
-    }
-
-    if (url.pathname.includes("/rest/v1/")) {
-      event.respondWith(supabaseStaleWhileRevalidate(request));
-      return;
-    }
-
     return;
   }
 

@@ -10,7 +10,7 @@ import {
   type Category,
   type RecurringTransaction,
   type Transaction,
-} from "../src/lib/finance.js";
+} from "../src/lib/finance";
 
 test("todayKey and monthKey use local date parts", () => {
   const date = new Date(2026, 3, 27, 23, 59, 0);
