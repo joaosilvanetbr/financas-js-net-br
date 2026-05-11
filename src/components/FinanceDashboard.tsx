@@ -2,6 +2,7 @@ import { useAuth } from "../context/AuthContext";
 import { EntryType } from "../lib/finance";
 import { centsToInput, shiftMonthKey } from "../lib/dashboard-helpers";
 import { useDashboard } from "../hooks/useDashboard";
+import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import { DashboardModal } from "./dashboard/DashboardModal";
 import { DashboardSkeleton } from "./dashboard/DashboardSkeleton";
 import { SummaryCard } from "./dashboard/SummaryCard";
@@ -50,6 +51,11 @@ const tabs: Array<{ id: DashboardTab; label: string; icon: typeof Home }> = [
 export function FinanceDashboard() {
   const { signOut } = useAuth();
   const d = useDashboard();
+
+  const { pulling, pullDistance, refreshing } = usePullToRefresh({
+    onRefresh: () => d.loadData(true),
+    disabled: d.loading || d.isBusy,
+  });
 
   const profileLabel = d.profile?.display_name?.trim() || d.user?.username || "Controle pessoal";
 
@@ -109,6 +115,17 @@ export function FinanceDashboard() {
 
       {/* App shell */}
       <section className="app-shell">
+        {/* Pull-to-refresh indicator */}
+        <div
+          className={`pull-indicator ${pulling ? "is-pulling" : ""} ${refreshing ? "is-refreshing" : ""}`}
+          style={pullDistance > 0 ? { transform: `translateY(${Math.min(pullDistance, 60)}px)` } : undefined}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 5v14M5 12l7-7 7 7" />
+          </svg>
+          {refreshing ? "Atualizando..." : pulling ? "Solte para atualizar" : ""}
+        </div>
+
         {/* Topbar */}
         <header className="topbar">
           <div>
