@@ -1,5 +1,5 @@
-const SHELL_CACHE = "financas-shell-v7";
-const DATA_CACHE = "financas-data-v7";
+const SHELL_CACHE = "financas-shell-v8";
+const DATA_CACHE = "financas-data-v8";
 
 const APP_SHELL = [
   "/",
@@ -122,7 +122,9 @@ self.addEventListener("fetch", (event) => {
             return response;
           }
           const copy = response.clone();
-          caches.open(SHELL_CACHE).then((c) => c.put(request, copy));
+          if (request.method === "GET") {
+            caches.open(SHELL_CACHE).then((c) => c.put(request, copy));
+          }
           return response;
         });
       }),
