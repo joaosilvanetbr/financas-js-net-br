@@ -37,7 +37,7 @@ async function handlePost(request: Request, env: Env, userId: string) {
     `INSERT INTO recurring_transactions
       (id, user_id, type, description, amount_cents, category_id, day_of_month, is_active, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, 1, unixepoch())`
-  ).bind(id, userId, body.type, body.description.trim(), body.amount_cents,
+  ).bind(id, userId, body.type, (body.description || "").trim(), body.amount_cents,
     body.category_id || null, body.day_of_month).run();
 
   const row = await env.DB.prepare("SELECT * FROM recurring_transactions WHERE id = ? AND user_id = ?").bind(id, userId).first();
@@ -69,7 +69,7 @@ async function handlePut(request: Request, env: Env, userId: string) {
       day_of_month = ?, is_active = ?
      WHERE id = ? AND user_id = ?`
   ).bind(
-    body.type, body.description.trim(), body.amount_cents,
+    body.type, (body.description || "").trim(), body.amount_cents,
     body.category_id || null, body.day_of_month,
     body.is_active ? 1 : 0, id, userId
   ).run();

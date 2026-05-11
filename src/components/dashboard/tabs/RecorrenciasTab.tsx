@@ -102,7 +102,7 @@ export function RecorrenciasTab({
 
     const amount = toCents(form.amount);
     const day = Number(form.day_of_month);
-    if (!amount || !form.description.trim() || day < 1 || day > 28) return;
+    if (!amount || day < 1 || day > 28) return;
 
     const { data, error } = await onAdd({
       type: form.type,

@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS recurring_transactions (
   id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   type TEXT NOT NULL CHECK (type IN ('entrada', 'saida')),
-  description TEXT NOT NULL,
+  description TEXT,
   amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
   category_id TEXT REFERENCES categories(id) ON DELETE SET NULL,
   day_of_month INTEGER NOT NULL CHECK (day_of_month BETWEEN 1 AND 28),

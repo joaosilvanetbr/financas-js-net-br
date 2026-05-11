@@ -28,8 +28,8 @@ async function handleGet(request: Request, env: Env, userId: string) {
 async function handlePost(request: Request, env: Env, userId: string) {
   const body = await request.json();
 
-  if (!body.description?.trim() || !body.entry_date || !body.amount_cents) {
-    return errorResponse("Descricao, data e valor obrigatorios");
+  if (!body.entry_date || !body.amount_cents) {
+    return errorResponse("Data e valor obrigatorios");
   }
 
   if (body.category_id) {
@@ -53,7 +53,7 @@ async function handlePost(request: Request, env: Env, userId: string) {
     id,
     userId,
     body.type || "saida",
-    body.description.trim(),
+    (body.description || "").trim(),
     body.amount_cents,
     body.entry_date,
     body.category_id || null,
@@ -93,7 +93,7 @@ async function handlePut(request: Request, env: Env, userId: string) {
      WHERE id = ? AND user_id = ?`
   ).bind(
     body.type,
-    body.description.trim(),
+    (body.description || "").trim(),
     body.amount_cents,
     body.entry_date,
     body.category_id || null,

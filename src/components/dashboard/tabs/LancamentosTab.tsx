@@ -83,7 +83,7 @@ export function LancamentosTab({
     if (isBusy) return;
 
     const amount = toCents(form.amount);
-    if (!amount || !form.description.trim() || !form.entry_date) return;
+    if (!amount || !form.entry_date) return;
 
     const { data, error } = await onAdd({
       type: form.type,

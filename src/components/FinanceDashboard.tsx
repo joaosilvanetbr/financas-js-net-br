@@ -291,8 +291,8 @@ export function FinanceDashboard() {
     event.preventDefault();
     if (!editingTransaction || isBusy) return;
     const amount = toCents(editingTransaction.amount);
-    if (!amount || !editingTransaction.description.trim() || !editingTransaction.entry_date) {
-      setMessage("Preencha descricao, valor e data para salvar.");
+    if (!amount || !editingTransaction.entry_date) {
+      setMessage("Preencha valor e data para salvar.");
       return;
     }
     setPendingAction("transaction");
@@ -1014,7 +1014,7 @@ export function FinanceDashboard() {
                 if (!editingRecurring || isBusy) return;
                 const amount = toCents(editingRecurring.amount);
                 const day = Number(editingRecurring.day_of_month);
-                if (!amount || !editingRecurring.description.trim() || day < 1 || day > 28) {
+                if (!amount || day < 1 || day > 28) {
                   setMessage("Preencha recorrencia com valor e dia entre 1 e 28.");
                   return;
                 }
