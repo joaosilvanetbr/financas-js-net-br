@@ -17,7 +17,7 @@ export const onRequestGet = async ({ request, env }: { request: Request; env: En
 
     // Perfil
     const profile = await env.DB.prepare(
-      "SELECT id, email, display_name FROM users WHERE id = ?"
+      "SELECT id, username, display_name FROM users WHERE id = ?"
     ).bind(userId).first();
 
     // Categorias
