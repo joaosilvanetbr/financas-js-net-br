@@ -78,6 +78,11 @@ self.addEventListener("fetch", (event) => {
   const request = event.request;
   const url = new URL(request.url);
 
+  // Nunca interceptar requisicoes de API — evita cache cross-user
+  if (url.pathname.startsWith("/api/")) {
+    return;
+  }
+
   if (request.method !== "GET" && request.method !== "POST") {
     return;
   }
